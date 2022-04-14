@@ -1,0 +1,88 @@
+{
+  "Comment": "A description of my state machine",
+  "StartAt": "StartTranscriptionJob",
+  "States": {
+    "StartTranscriptionJob": {
+      "Type": "Task",
+      "Parameters": {
+        "Media": {
+          "MediaFileUri.$": "States.Format('s3://{}/{}', $.BucketName, $.VideoKey)"
+        },
+        "TranscriptionJobName.$": "$$.Execution.Name",
+        "LanguageCode": "en-US",
+        "OutputBucketName.$": "$.BucketName",
+        "OutputKey.$": "States.Format('{}_transcribed.json', $.VideoKey)"
+      },
+      "Resource": "arn:aws:states:::aws-sdk:transcribe:startTranscriptionJob",
+      "ResultPath": "$.transcription",
+      "Next": "Wait"
+    },
+    "Wait": {
+      "Type": "Wait",
+      "Seconds": 10,
+      "Next": "GetTranscriptionJobStatus"
+    },
+    "GetTranscriptionJobStatus": {
+      "Type": "Task",
+      "Parameters": {
+        "TranscriptionJobName.$": "$.transcription.TranscriptionJob.TranscriptionJobName"
+      },
+      "Resource": "arn:aws:states:::aws-sdk:transcribe:getTranscriptionJob",
+      "ResultPath": "$.transcription",
+      "Next": "CheckTranscriptionJobStatus"
+    },
+    "CheckTranscriptionJobStatus": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.transcription.TranscriptionJob.TranscriptionJobStatus",
+          "StringMatches": "COMPLETED",
+          "Next": "GetTranscriptionJobResult"
+        },
+        {
+          "Variable": "$.transcription.TranscriptionJob.TranscriptionJobStatus",
+          "StringMatches": "FAILED",
+          "Next": "Fail"
+        }
+      ],
+      "Default": "Wait"
+    },
+    "GetTranscriptionJobResult": {
+      "Type": "Task",
+      "Parameters": {
+        "Bucket.$": "$.BucketName",
+        "Key.$": "States.Format('{}_transcribed.json', $.VideoKey)"
+      },
+      "Resource": "arn:aws:states:::aws-sdk:s3:getObject",
+      "ResultSelector": {
+        "filecontent.$": "States.StringToJson($.Body)"
+      },
+      "ResultPath": "$.transcription",
+      "Next": "TranslateText"
+    },
+    "TranslateText": {
+      "Type": "Task",
+      "Parameters": {
+        "SourceLanguageCode": "en",
+        "TargetLanguageCode": "id",
+        "Text.$": "$.transcription.filecontent.results.transcripts[0].transcript"
+      },
+      "Resource": "arn:aws:states:::aws-sdk:translate:translateText",
+      "ResultPath": "$.translate",
+      "Next": "PutTranslateResult"
+    },
+    "PutTranslateResult": {
+      "Type": "Task",
+      "End": true,
+      "Parameters": {
+        "Body.$": "$.translate.TranslatedText",
+        "Bucket.$": "$.BucketName",
+        "Key.$": "States.Format('{}_translated.txt', $.VideoKey)"
+      },
+      "Resource": "arn:aws:states:::aws-sdk:s3:putObject"
+    },
+    "Fail": {
+      "Type": "Fail"
+    }
+  }
+}
