@@ -79,7 +79,8 @@
         "Bucket.$": "$.BucketName",
         "Key.$": "States.Format('{}_translated.txt', $.VideoKey)"
       },
-      "Resource": "arn:aws:states:::aws-sdk:s3:putObject"
+      "Resource": "arn:aws:states:::aws-sdk:s3:putObject",
+      "ResultPath": null
     },
     "Fail": {
       "Type": "Fail"
