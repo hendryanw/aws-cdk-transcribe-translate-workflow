@@ -64,7 +64,8 @@ export class TranscribeTranslateWorkflowStack extends Stack {
         WORKFLOW_STATE_MACHINE_NAME: workflow.attrName,
         ACCOUNT_ID: this.account,
         REGION: this.region
-      }
+      },
+      tracing: lambda.Tracing.ACTIVE
     });
     submitJobLambda.addToRolePolicy(iam.PolicyStatement.fromJson({
       "Effect": "Allow",
@@ -86,7 +87,8 @@ export class TranscribeTranslateWorkflowStack extends Stack {
         WORKFLOW_STATE_MACHINE_NAME: workflow.attrName,
         ACCOUNT_ID: this.account,
         REGION: this.region
-      }
+      },
+      tracing: lambda.Tracing.ACTIVE
     });
     getJobResultsLambda.addToRolePolicy(iam.PolicyStatement.fromJson({
       "Effect": "Allow",
@@ -102,6 +104,9 @@ export class TranscribeTranslateWorkflowStack extends Stack {
       restApiName: "AWS Transcribe Translate Workflow Service",
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS
+      },
+      deployOptions: {
+        tracingEnabled: true
       }
     });
     

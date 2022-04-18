@@ -63,7 +63,8 @@ exports.submitJob = async (event, context) => {
       input: JSON.stringify({
         "VideoKey": body.videoKey,
         "BucketName": workflowBucketName
-      })
+      }),
+      traceHeader: event.headers['X-Amzn-Trace-Id']
     }
     const execution = await stepFunctionsClient.startExecution(params).promise();
     console.log(execution);
